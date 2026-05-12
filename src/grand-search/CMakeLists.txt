@@ -191,6 +191,8 @@ set(GUISRC
     # shared widgets
     ../global/widgets/highlightlabel.h
     ../global/widgets/highlightlabel.cpp
+    ../global/widgets/highlightutils.h
+    ../global/widgets/highlightutils.cpp
     )
 
 # business

@@ -34,6 +34,15 @@ protected:
 private:
     void drawSelectState(QPainter *painter, const QStyleOptionViewItem &option, const QModelIndex &index) const;
     void drawSearchResultText(QPainter *painter, const QStyleOptionViewItem &option, const QModelIndex &index) const;
+    void drawItemName(QPainter *painter, const QStyleOptionViewItem &option,
+                      const QString &name, const QString &searcher,
+                      const QStringList &keywords, const QFont &font,
+                      const QFontMetrics &fontMetrics, const QColor &textColor,
+                      bool isDark) const;
+    void drawMatchedContext(QPainter *painter, const QStyleOptionViewItem &option,
+                            const QString &matchedContext, const QStringList &keywords,
+                            const QFont &font, const QFontMetrics &fontMetrics,
+                            bool isDark, int startY) const;
     void drawTailText(QPainter *painter, const QStyleOptionViewItem &option, const QModelIndex &index, int textMaxWidth, int actualStartX) const;
     void drawTailDetailedInfo(QPainter *painter, const QStyleOptionViewItem &option, const QString &text, const QColor &color, const QFont &font, const QFontMetrics &fontMetrics, int &startX) const;
 

@@ -151,7 +151,9 @@ int GroupWidget::getCurSelectHeight()
     int nHeight = 0;
     if (m_listView->currentIndex().isValid() || m_viewMoreButton->isSelected()) {
         nHeight += m_groupLabel->height();
-        nHeight += (m_listView->currentIndex().row() + 1) * ListItemHeight;
+        int curRow = m_listView->currentIndex().row();
+        for (int i = 0; i <= curRow; ++i)
+            nHeight += m_listView->sizeHintForRow(i);
     }
 
     return nHeight;
@@ -163,7 +165,10 @@ void GroupWidget::reLayout()
     Q_ASSERT(m_groupLabel);
     Q_ASSERT(m_line);
 
-    m_listView->setFixedHeight(m_listView->rowCount() * ListItemHeight);
+    int totalHeight = 0;
+    for (int i = 0; i < m_listView->rowCount(); ++i)
+        totalHeight += m_listView->sizeHintForRow(i);
+    m_listView->setFixedHeight(totalHeight);
 
     int labelWidth = this->width() - LayoutMagrinSize * 2 - (m_groupIcon->isVisible() ? 23 : 0);
     QTextDocument doc;
