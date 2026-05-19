@@ -50,14 +50,10 @@ void CheckBoxWidget::addCheckBox(int index, CheckBoxItem *item, bool isChecked)
     m_checkBoxList << item;
 
     for (int i = 0; i < m_checkBoxList.count(); ++i) {
-        if (i == 0) {
-            m_checkBoxList[i]->setTopRound(true);
-        } else if (i == m_checkBoxList.count() - 1) {
-            m_checkBoxList[i]->setBottomRound(true);
-        } else {
-            m_checkBoxList[i]->setTopRound(false);
-            m_checkBoxList[i]->setBottomRound(false);
-        }
+        bool isFirst = (i == 0);
+        bool isLast = (i == m_checkBoxList.count() - 1);
+        m_checkBoxList[i]->setTopRound(isFirst);
+        m_checkBoxList[i]->setBottomRound(isLast);
     }
 
     connect(item, &CheckBoxItem::toggled, this, &CheckBoxWidget::onCheckBoxChecked);

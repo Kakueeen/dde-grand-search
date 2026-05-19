@@ -35,8 +35,17 @@ private:
     void drawSelectState(QPainter *painter, const QStyleOptionViewItem &option, const QModelIndex &index) const;
     void drawIcon(QPainter *painter, const QStyleOptionViewItem &option, const QModelIndex &index) const;
     void drawSearchResultText(QPainter *painter, const QStyleOptionViewItem &option, const QModelIndex &index) const;
-    void drawTailText(QPainter *painter, const QStyleOptionViewItem &option, const QModelIndex &index, int textMaxWidth, int actualStartX) const;
-    void drawTailDetailedInfo(QPainter *painter, const QStyleOptionViewItem &option, const QString &text, const QColor &color, const QFont &font, const QFontMetrics &fontMetrics, int &startX) const;
+    void drawItemName(QPainter *painter, const QStyleOptionViewItem &option,
+                      const QString &name, const QString &searcher,
+                      const QStringList &keywords, const QFont &font,
+                      const QFontMetrics &fontMetrics, const QColor &textColor,
+                      bool isDark, int startY) const;
+    void drawMatchedContext(QPainter *painter, const QStyleOptionViewItem &option,
+                            const QString &matchedContext, const QStringList &keywords,
+                            const QFont &font, const QFontMetrics &fontMetrics,
+                            bool isDark, int startY, int startX = 0) const;
+    int drawTailText(QPainter *painter, const QStyleOptionViewItem &option, const QModelIndex &index, int maxWidth, int startX, int startY, int maxCount = 0) const;
+    void drawTailDetailedInfo(QPainter *painter, const QString &text, const QColor &color, const QFont &font, const QFontMetrics &fontMetrics, int &startX, int startY) const;
 
     void calcTailShowInfo(const int totalTailWidth, int &tailCount, int &averageWidth) const;
     QMap<int, QString> calcTailShowData(QStringList &strings, const int &tailCount, int averageWidth, const QFontMetrics &fontMetrics) const;
@@ -46,4 +55,4 @@ private:
 
 }
 
-#endif // GRANDSEARCHLISTDELEGATE_H
+#endif   // GRANDSEARCHLISTDELEGATE_H

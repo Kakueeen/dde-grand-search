@@ -224,24 +224,19 @@ QVariantHash FileSearchUtils::tailerData(const QFileInfo &info)
     QVariantHash hash;
     QStringList datas;
     auto config = Configer::instance()->group(GRANDSEARCH_TAILER_GROUP);
+
+    // 修改时间固定显示
+    auto timeModified = CommonTools::getFileModifiedTime(info.absoluteFilePath()).toString("yyyy-MM-dd hh:mm ") + QObject::tr("modified");
+    datas.append(timeModified);
+    qCDebug(logDaemon) << "Added modification time to tailer:" << timeModified;
+
+    // 上级目录为可配置项
     if (config->value(GRANDSEARCH_TAILER_PARENTDIR, false)) {
         datas.append(info.absolutePath());
         qCDebug(logDaemon) << "Added parent directory to tailer:" << info.absolutePath();
     }
 
-    if (config->value(GRANDSEARCH_TAILER_TIMEMODEFIED, false)) {
-        auto timeModified = CommonTools::getFileModifiedTime(info.absoluteFilePath()).toString("yyyy-MM-dd hh:mm ") + QObject::tr("modified");
-        datas.append(timeModified);
-        qCDebug(logDaemon) << "Added modification time to tailer:" << timeModified;
-    }
-
-    if (!datas.isEmpty()) {
-        hash.insert(GRANDSEARCH_PROPERTY_ITEM_TAILER, datas);
-        qCDebug(logDaemon) << "Tailer data generated - Entries:" << datas.size();
-    } else {
-        qCDebug(logDaemon) << "No tailer data configured";
-    }
-
+    hash.insert(GRANDSEARCH_PROPERTY_ITEM_TAILER, datas);
     return hash;
 }
 
