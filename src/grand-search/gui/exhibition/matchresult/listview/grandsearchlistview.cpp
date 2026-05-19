@@ -34,7 +34,7 @@ GrandSearchListView::GrandSearchListView(QWidget *parent)
     m_delegate = new GrandSearchListDelegate(this);
     setItemDelegate(m_delegate);
     setViewportMargins(0, 0, 0, 0);
-    setUniformItemSizes(true);
+    setUniformItemSizes(false);
     setIconSize({ ICON_SIZE, ICON_SIZE });
 
     setViewMode(QListView::ListMode);

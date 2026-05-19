@@ -21,8 +21,7 @@ class TailerWidget : public Dtk::Widget::DWidget
 public:
     enum TailerProperty
     {
-        ParentDirectory,
-        TimeModified
+        ParentDirectory
     };
 
     explicit TailerWidget(QWidget *parent = nullptr);

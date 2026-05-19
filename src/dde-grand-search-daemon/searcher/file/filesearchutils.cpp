@@ -29,24 +29,7 @@ MatchedItem FileSearchUtils::packItem(const QString &fileName, const QString &se
     item.type = mimeType.name();
     item.icon = mimeType.iconName();
     item.searcher = searcher;
-
-    QVariantHash extraData = tailerData(fileInfo);
-    // Inject keywords for highlighting
-    if (!keywords.isEmpty())
-        extraData.insert(GRANDSEARCH_PROPERTY_ITEM_KEYWORDS, keywords);
-
-    if (!matchedContext.isEmpty()) {
-        QString context = matchedContext;
-        // 去除首尾的省略符号
-        if (context.startsWith("…"))
-            context = context.mid(1);
-        if (context.endsWith("…"))
-            context.chop(1);
-        if (!context.isEmpty())
-            extraData.insert(GRANDSEARCH_PROPERTY_ITEM_MATCHEDCONTEXT, context);
-    }
-
-    item.extra = QVariant::fromValue(extraData);
+    item.extra = QVariant::fromValue(extraData(fileInfo, keywords, matchedContext));
 
     qCDebug(logDaemon) << "Item packed successfully - Name:" << item.name
                        << "Type:" << item.type << "Icon:" << item.icon;
@@ -217,31 +200,41 @@ FileSearchUtils::SearchInfo FileSearchUtils::parseContent(const QString &content
     return info;
 }
 
-QVariantHash FileSearchUtils::tailerData(const QFileInfo &info)
+QVariantHash FileSearchUtils::extraData(const QFileInfo &info, const QStringList &keywords, const QString &matchedContext)
 {
     qCDebug(logDaemon) << "Generating tailer data for file:" << info.absoluteFilePath();
 
     QVariantHash hash;
     QStringList datas;
     auto config = Configer::instance()->group(GRANDSEARCH_TAILER_GROUP);
+
+    // 修改时间
+    auto timeModified = CommonTools::getFileModifiedTime(info.absoluteFilePath()).toString("yyyy-MM-dd hh:mm");
+    hash.insert(GRANDSEARCH_PROPERTY_ITEM_MODIFIED_TIME, timeModified);
+    qCDebug(logDaemon) << "Added modification time:" << timeModified;
+
+    // 上级目录为可配置项
     if (config->value(GRANDSEARCH_TAILER_PARENTDIR, false)) {
         datas.append(info.absolutePath());
         qCDebug(logDaemon) << "Added parent directory to tailer:" << info.absolutePath();
     }
 
-    if (config->value(GRANDSEARCH_TAILER_TIMEMODEFIED, false)) {
-        auto timeModified = CommonTools::getFileModifiedTime(info.absoluteFilePath()).toString("yyyy-MM-dd hh:mm ") + QObject::tr("modified");
-        datas.append(timeModified);
-        qCDebug(logDaemon) << "Added modification time to tailer:" << timeModified;
+    // Inject keywords for highlighting
+    if (!keywords.isEmpty())
+        hash.insert(GRANDSEARCH_PROPERTY_ITEM_KEYWORDS, keywords);
+
+    if (!matchedContext.isEmpty()) {
+        QString context = matchedContext;
+        // 去除首尾的省略符号
+        if (context.startsWith("…"))
+            context = context.mid(1);
+        if (context.endsWith("…"))
+            context.chop(1);
+        if (!context.isEmpty())
+            hash.insert(GRANDSEARCH_PROPERTY_ITEM_MATCHEDCONTEXT, context);
     }
 
-    if (!datas.isEmpty()) {
-        hash.insert(GRANDSEARCH_PROPERTY_ITEM_TAILER, datas);
-        qCDebug(logDaemon) << "Tailer data generated - Entries:" << datas.size();
-    } else {
-        qCDebug(logDaemon) << "No tailer data configured";
-    }
-
+    hash.insert(GRANDSEARCH_PROPERTY_ITEM_TAILER, datas);
     return hash;
 }
 
