@@ -41,7 +41,7 @@ public:
     static Group getGroupBySuffix(const QString &suffix);
     static Group getGroupByGroupName(const QString &groupName);
     static SearchInfo parseContent(const QString &content);
-    static QVariantHash tailerData(const QFileInfo &info);
+    static QVariantHash extraData(const QFileInfo &info, const QStringList &keywords, const QString &matchedContext);
     static QStringList buildDFMSearchFileTypes(const QList<Group> &groupList);
     static bool isPinyin(const QString &str);
     static bool hasWildcard(const QString &str);

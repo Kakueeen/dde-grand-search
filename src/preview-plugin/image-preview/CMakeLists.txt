@@ -13,6 +13,8 @@ set(SRCS
     imageview.cpp
     ${CMAKE_SOURCE_DIR}/src/global/widgets/highlightlabel.h
     ${CMAKE_SOURCE_DIR}/src/global/widgets/highlightlabel.cpp
+    ${CMAKE_SOURCE_DIR}/src/global/widgets/highlightutils.h
+    ${CMAKE_SOURCE_DIR}/src/global/widgets/highlightutils.cpp
 )
 
 add_library(${LIB_NAME} SHARED ${SRCS} ${QRCS})

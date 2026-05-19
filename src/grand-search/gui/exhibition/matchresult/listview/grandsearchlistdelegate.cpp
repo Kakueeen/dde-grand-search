@@ -5,27 +5,28 @@
 #include "grandsearchlistdelegate.h"
 #include "grandsearchlistview.h"
 #include "global/builtinsearch.h"
+#include "global/widgets/highlightutils.h"
 
 #include <DGuiApplicationHelper>
+#include <DFontSizeManager>
 
 #include <QDebug>
 #include <QPainter>
 #include <QPainterPath>
-#include <QTextDocument>
 #include <QStyleOptionViewItem>
+#include <QTextDocument>
 #include <QTextCursor>
-#include <QTextBlock>
 #include <QAbstractTextDocumentLayout>
 #include <QApplication>
 #include <QToolTip>
 
-#define ListItemSpace 10   // 列表图标与文本间间距
-#define ListItemHeight 36   // 列表行高
+#define ListItemHeight 36   // 列表行高（单行）
 #define ListIconSize 24   // 列表图标大小
 #define ListRowWidth 740   // 列表行宽
-#define ListIconMargin 10   // 列表图标边距
-#define TailDataMargin 10   // 拖尾信息显示间隔
+#define ItemDataSpacing 10   // 信息显示间隔
 #define TailMaxWidth 150   // 拖尾信息最大显示宽度
+#define ContextLineSpacing 1   // 文件名与匹配内容行间距
+#define ListLineMargin 8   // 行上下边距
 
 DWIDGET_USE_NAMESPACE
 DGUI_USE_NAMESPACE
@@ -82,8 +83,27 @@ void GrandSearchListDelegate::paint(QPainter *painter, const QStyleOptionViewIte
 QSize GrandSearchListDelegate::sizeHint(const QStyleOptionViewItem &option, const QModelIndex &index) const
 {
     Q_UNUSED(option)
-    Q_UNUSED(index)
-    return QSize(ListRowWidth, ListItemHeight);
+
+    bool hasSecondLine = false;
+    if (index.isValid()) {
+        QVariant extra = index.data(DATA_ROLE).value<MatchedItem>().extra;
+        if (extra.isValid()) {
+            const QVariantHash &hash = extra.toHash();
+            hasSecondLine = hash.contains(GRANDSEARCH_PROPERTY_ITEM_MATCHEDCONTEXT)
+                    || hash.contains(GRANDSEARCH_PROPERTY_ITEM_TAILER)
+                    || hash.contains(GRANDSEARCH_PROPERTY_ITEM_MODIFIED_TIME);
+        }
+    }
+
+    if (!hasSecondLine)
+        return QSize(ListRowWidth, ListItemHeight);
+
+    QFontMetrics nameFm(DFontSizeManager::instance()->get(DFontSizeManager::T6));
+    QFontMetrics contextFm(DFontSizeManager::instance()->get(DFontSizeManager::T8));
+    int totalHeight = ListLineMargin + nameFm.height() + ContextLineSpacing + contextFm.height() + ListLineMargin;
+    totalHeight = qMax(totalHeight, ListItemHeight);
+
+    return QSize(ListRowWidth, totalHeight);
 }
 
 static void hideTooltipImmediately()
@@ -130,7 +150,7 @@ void GrandSearchListDelegate::drawIcon(QPainter *painter, const QStyleOptionView
         // 按实际比例缩放，宽高不超过 ListIconSize
         QSize scaledSize = thumbnail.size().scaled(ListIconSize, ListIconSize, Qt::KeepAspectRatio);
         QRect iconRect(QPoint(), scaledSize);
-        iconRect.moveCenter(QPoint(option.rect.x() + ListIconMargin + ListIconSize / 2,
+        iconRect.moveCenter(QPoint(option.rect.x() + ItemDataSpacing + ListIconSize / 2,
                                    option.rect.y() + option.rect.height() / 2));
 
         painter->save();
@@ -157,7 +177,7 @@ void GrandSearchListDelegate::drawIcon(QPainter *painter, const QStyleOptionView
         if (icon.isNull())
             return;
 
-        QRect iconRect(option.rect.x() + ListIconMargin, option.rect.y() + (option.rect.height() - ListIconSize) / 2,
+        QRect iconRect(option.rect.x() + ItemDataSpacing, option.rect.y() + (option.rect.height() - ListIconSize) / 2,
                        ListIconSize, ListIconSize);
         painter->save();
         icon.paint(painter, iconRect);
@@ -193,32 +213,84 @@ void GrandSearchListDelegate::drawSelectState(QPainter *painter, const QStyleOpt
 
 void GrandSearchListDelegate::drawSearchResultText(QPainter *painter, const QStyleOptionViewItem &option, const QModelIndex &index) const
 {
-    QColor nameTextColor;
-    const GrandSearchListView *listview = qobject_cast<const GrandSearchListView *>(option.widget);
+    const MatchedItem &item = index.data(DATA_ROLE).value<MatchedItem>();
+    const QVariantHash &extraHash = item.extra.toHash();
 
-    if ((listview->getThemeType() == DGuiApplicationHelper::DarkType)
-        || (index.isValid() && index == listview->currentIndex())) {
-        nameTextColor = QColor("#FFFFFF");
-    } else {
-        nameTextColor = QColor("#000000");
+    const GrandSearchListView *listview = qobject_cast<const GrandSearchListView *>(option.widget);
+    bool isDark = (listview->getThemeType() == DGuiApplicationHelper::DarkType)
+            || (index.isValid() && index == listview->currentIndex());
+    QColor nameTextColor = isDark ? QColor("#FFFFFF") : QColor("#000000");
+    nameTextColor.setAlpha(255 * 0.9);
+
+    QStringList keywords = extraHash.value(GRANDSEARCH_PROPERTY_ITEM_KEYWORDS, QStringList()).toStringList();
+    QFont nameFont = DFontSizeManager::instance()->get(DFontSizeManager::T6);
+    QFontMetrics nameFontMetrics(nameFont);
+
+    QFont secondFont = DFontSizeManager::instance()->get(DFontSizeManager::T8);
+    QFontMetrics secondFontMetrics(secondFont);
+    int textStartX = ItemDataSpacing + ListIconSize + ItemDataSpacing;
+    int firstLineY = option.rect.y() + ListLineMargin;
+    int secondLineY = firstLineY + nameFontMetrics.height() + ContextLineSpacing;
+
+    // 第一行：文件名
+    drawItemName(painter, option, item.name, item.searcher, keywords,
+                 nameFont, nameFontMetrics, nameTextColor, isDark, firstLineY);
+
+    // 第二行颜色（修改时间、拖尾共用）
+    QColor secondLineColor = isDark ? QColor("#FFFFFF") : QColor("#000000");
+    secondLineColor.setAlphaF(0.5);
+
+    bool isPreview = listview->isPreviewItem();
+    int currentX = textStartX;
+    int remainingWidth = option.rect.width() - currentX;
+
+    // 修改时间（独立字段，不限制宽度）
+    QString modifiedTime = extraHash.value(GRANDSEARCH_PROPERTY_ITEM_MODIFIED_TIME).toString();
+    if (!modifiedTime.isEmpty()) {
+        modifiedTime.prepend(tr("Modified at "));
+        drawSecondLineText(painter, modifiedTime, secondFont, secondFontMetrics, secondLineColor, currentX, secondLineY);
+        remainingWidth = option.rect.width() - currentX;
     }
 
-    // 设置字体
-    QFont nameFont = DFontSizeManager::instance()->get(DFontSizeManager::T6);
-    nameFont.setWeight(QFont::Medium);
+    // 拖尾数据（预览时不显示）
+    if (!isPreview) {
+        QStringList tailList = extraHash.value(GRANDSEARCH_PROPERTY_ITEM_TAILER, QStringList()).toStringList();
+        if (!tailList.isEmpty()) {
+            if (remainingWidth > ItemDataSpacing) {
+                currentX += ItemDataSpacing;
+                remainingWidth = option.rect.width() - currentX;
+            }
+            currentX = drawTailText(painter, tailList, secondFont, secondFontMetrics, secondLineColor,
+                                    remainingWidth, currentX, secondLineY);
+            remainingWidth = option.rect.width() - currentX;
+        }
+    }
 
-    const QString &name = index.data(DATA_ROLE).value<MatchedItem>().name;
-    const QString &searcher = index.data(DATA_ROLE).value<MatchedItem>().searcher;
+    // 匹配摘要
+    if (!isPreview && remainingWidth > ItemDataSpacing) {
+        QString context = extraHash.value(GRANDSEARCH_PROPERTY_ITEM_MATCHEDCONTEXT).toString();
+        if (!context.isEmpty()) {
+            currentX += ItemDataSpacing;
+            drawMatchedContext(painter, option, context, keywords,
+                               secondFont, secondFontMetrics, isDark, secondLineY, currentX);
+        }
+    }
+}
 
-    int listItemTextMaxWidth = option.rect.width() - ListIconMargin - ListIconSize - ListItemSpace;
-    QFontMetrics nameFontMetrics(nameFont);
-    QString elidedName = nameFontMetrics.elidedText(name, Qt::ElideRight, listItemTextMaxWidth);
+void GrandSearchListDelegate::drawItemName(QPainter *painter, const QStyleOptionViewItem &option,
+                                           const QString &name, const QString &searcher,
+                                           const QStringList &keywords, const QFont &font,
+                                           const QFontMetrics &fontMetrics, const QColor &textColor,
+                                           bool isDark, int startY) const
+{
+    int textStartX = ItemDataSpacing + ListIconSize + ItemDataSpacing;
+    int nameTextMaxWidth = option.rect.width() - textStartX;
+
+    QString elidedName = fontMetrics.elidedText(name, Qt::ElideRight, nameTextMaxWidth);
     if (elidedName != name && GRANDSEARCH_CLASS_WEB_STATICTEXT == searcher) {
-        // 如果存在截断显示，且该项属于web搜索，则截断时需要保留尾部的双引号
-        // 根据文档工程师给出的翻译规范，双引号会被翻译，需要使用翻译后的字符计算宽度
         static const QString markStr = name.right(1);
-        static const int markWidth = nameFontMetrics.size(Qt::TextSingleLine, markStr).width();
-        elidedName = nameFontMetrics.elidedText(name.left(name.count() - 1), Qt::ElideRight, listItemTextMaxWidth - markWidth);
+        static const int markWidth = fontMetrics.size(Qt::TextSingleLine, markStr).width();
+        elidedName = fontMetrics.elidedText(name.left(name.size() - 1), Qt::ElideRight, nameTextMaxWidth - markWidth);
         elidedName.append(markStr);
     }
 
@@ -230,123 +302,139 @@ void GrandSearchListDelegate::drawSearchResultText(QPainter *painter, const QSty
     nameCursor.beginEditBlock();
     nameCursor.select(QTextCursor::LineUnderCursor);
     QTextCharFormat nameFmt;
-    nameFmt.setForeground(nameTextColor);
-    nameFmt.setFont(nameFont);
+    nameFmt.setForeground(textColor);
+    nameFmt.setFont(font);
     nameCursor.mergeCharFormat(nameFmt);
+
+    if (!keywords.isEmpty()) {
+        QTextCharFormat hlFmt;
+        hlFmt.setFontWeight(QFont::DemiBold);
+        hlFmt.setForeground(isDark ? QColor("#FFFFFF") : QColor("#000000"));
+        for (const QString &kw : keywords) {
+            if (kw.isEmpty()) continue;
+            QTextCursor searchCursor(&nameDocument);
+            while (!searchCursor.isNull() && !searchCursor.atEnd()) {
+                searchCursor = nameDocument.find(kw, searchCursor,
+                                                 QTextDocument::FindCaseSensitively);
+                if (!searchCursor.isNull())
+                    searchCursor.mergeCharFormat(hlFmt);
+            }
+        }
+    }
+
     nameCursor.clearSelection();
     nameCursor.movePosition(QTextCursor::EndOfLine);
     nameCursor.endEditBlock();
 
-    // 设置文字边距，保证绘制文字居中
     QAbstractTextDocumentLayout::PaintContext paintContext;
-    int nameMargin = static_cast<int>((option.rect.height() - nameFontMetrics.height()) / 2);
-    int actualNameWidth = nameFontMetrics.size(Qt::TextSingleLine, elidedName).width();
-    int actualStartX = ListIconMargin + ListIconSize + ListItemSpace;
-    QRect nameTextRect(actualStartX, option.rect.y() + nameMargin, actualNameWidth, option.rect.height());
+    int actualNameWidth = fontMetrics.size(Qt::TextSingleLine, elidedName).width();
+    QRect drawRect(textStartX, startY, actualNameWidth, fontMetrics.height());
 
     painter->save();
-    painter->translate(nameTextRect.topLeft());
-    painter->setClipRect(nameTextRect.translated(-nameTextRect.topLeft()));
+    painter->translate(drawRect.topLeft());
+    painter->setClipRect(drawRect.translated(-drawRect.topLeft()));
     nameDocument.documentLayout()->draw(painter, paintContext);
     painter->restore();
-
-    // 未显示预览窗口时，需要显示拖尾数据
-    if (!listview->isPreviewItem()) {
-        drawTailText(painter, option, index, option.rect.width(), actualStartX + nameTextRect.width());
-    }
 }
 
-void GrandSearchListDelegate::drawTailText(QPainter *painter, const QStyleOptionViewItem &option, const QModelIndex &index, int textMaxWidth, int actualStartX) const
+void GrandSearchListDelegate::drawMatchedContext(QPainter *painter, const QStyleOptionViewItem &option,
+                                                 const QString &matchedContext, const QStringList &keywords,
+                                                 const QFont &font, const QFontMetrics &fontMetrics,
+                                                 bool isDark, int startY, int startX) const
 {
-    QFont tailFont = DFontSizeManager::instance()->get(DFontSizeManager::T8);
-    QFontMetrics tailFontMetrics(tailFont);
+    if (startX <= 0)
+        startX = ItemDataSpacing + ListIconSize + ItemDataSpacing;
+    int maxWidth = option.rect.width() - startX;
 
-    // 计算拖尾间隔符号显示宽度
-    static QString separator("— ");
-    int separatorWidth = tailFontMetrics.size(Qt::TextSingleLine, separator).width();
+    QColor textColor = isDark ? QColor(255, 255, 255, int(255 * 0.5)) : QColor(0, 0, 0, int(255 * 0.5));
+    QColor highlightColor = isDark ? QColor(255, 255, 255, int(255 * 0.8)) : QColor(0, 0, 0, int(255 * 0.85));
 
-    // 计算是否有空间显示拖尾信息
-    int totalTailWidth = textMaxWidth - actualStartX;
-    // 显示拖尾信息前，必须先显示分隔符
-    totalTailWidth = totalTailWidth - TailDataMargin - separatorWidth;
+    // 以最左边的关键词匹配为锚点进行省略
+    auto allRanges = HighlightUtils::findMatchRanges(matchedContext, keywords);
+    QVector<HighlightUtils::MatchRange> leftmostOnly;
+    if (!allRanges.isEmpty())
+        leftmostOnly.append(allRanges.constFirst());
 
-    // 存在剩余空间来显示拖尾信息
-    if (totalTailWidth > 0) {
+    HighlightUtils::ElideResult elideResult;
+    if (!leftmostOnly.isEmpty())
+        elideResult = HighlightUtils::smartElideWithTracking(matchedContext, maxWidth, fontMetrics, leftmostOnly);
+    if (elideResult.text.isEmpty())
+        elideResult = HighlightUtils::elideWithTracking(matchedContext, Qt::ElideRight, maxWidth, fontMetrics);
 
-        // 提取拖尾数据
-        const QVariant &extra = index.data(DATA_ROLE).value<MatchedItem>().extra;
-        QStringList tailStringList = extra.toHash().value(GRANDSEARCH_PROPERTY_ITEM_TAILER, QStringList()).toStringList();
-        if (!tailStringList.isEmpty()) {
+    // 构建高亮格式
+    QTextCharFormat hlFmt;
+    hlFmt.setFont(font);
+    hlFmt.setFontWeight(QFont::DemiBold);
+    hlFmt.setForeground(highlightColor);
+    auto formats = HighlightUtils::buildFormatRanges(
+            elideResult.text, elideResult.origPositions, matchedContext, keywords, hlFmt);
 
-            // 根据剩余宽度，计算能够显示的拖尾数量
-            int tailCount = tailStringList.count();
-            int tailAverageWidth = totalTailWidth;
-            calcTailShowInfo(totalTailWidth, tailCount, tailAverageWidth);
-            const QMap<int, QString> &tailMap = calcTailShowData(tailStringList, tailCount, tailAverageWidth, tailFontMetrics);
+    // 绘制
+    QTextLayout layout;
+    layout.setText(elideResult.text);
+    layout.setFont(font);
+    layout.setFormats(formats);
+    layout.beginLayout();
+    QTextLine line = layout.createLine();
+    if (line.isValid())
+        line.setLineWidth(maxWidth);
+    layout.endLayout();
 
-            if (tailMap.isEmpty())
-                return;
-
-            // 设置拖尾字体属性
-            QColor tailTextColor;
-            const GrandSearchListView *listview = qobject_cast<const GrandSearchListView *>(option.widget);
-
-            if ((listview->getThemeType() == DGuiApplicationHelper::DarkType)
-                || (index.isValid() && index == listview->currentIndex())) {
-                tailTextColor = QColor("#FFFFFF");
-            } else {
-                tailTextColor = QColor("#000000");
-            }
-
-            tailTextColor.setAlphaF(0.5);
-
-            // 先绘制分隔符,与名称间隔10个像素
-            actualStartX += TailDataMargin;
-            drawTailDetailedInfo(painter, option, separator, tailTextColor, tailFont, tailFontMetrics, actualStartX);
-
-            // 再逐个绘制拖尾信息
-            for (auto index : tailMap.keys()) {
-
-                if (0 != index) {
-                    // 如果不是第一个拖尾数据，则需要保留必要的间隔空间
-                    actualStartX += TailDataMargin;
-                }
-
-                const QString &showTailInfo = tailMap.value(index);
-                drawTailDetailedInfo(painter, option, showTailInfo, tailTextColor, tailFont, tailFontMetrics, actualStartX);
-            }
-        }
-    }
+    painter->save();
+    painter->setPen(textColor);
+    painter->translate(startX, startY);
+    layout.draw(painter, QPointF(0, 0));
+    painter->restore();
 }
 
-void GrandSearchListDelegate::drawTailDetailedInfo(QPainter *painter, const QStyleOptionViewItem &option, const QString &text, const QColor &color, const QFont &font, const QFontMetrics &fontMetrics, int &startX) const
+int GrandSearchListDelegate::drawTailText(QPainter *painter, const QStringList &tailList, const QFont &font,
+                                            const QFontMetrics &fontMetrics, const QColor &color,
+                                            int maxWidth, int startX, int startY) const
 {
-    QTextDocument document;
-    document.setDocumentMargin(0);
-    document.setPlainText(text);
-    QTextCursor cursor(&document);
+    if (tailList.isEmpty())
+        return startX;
 
-    cursor.beginEditBlock();
-    cursor.select(QTextCursor::LineUnderCursor);
+    int tailCount = tailList.count();
+    int tailAverageWidth = maxWidth;
+    calcTailShowInfo(maxWidth, tailCount, tailAverageWidth);
+
+    QStringList mutableList = tailList;
+    const QMap<int, QString> &tailMap = calcTailShowData(mutableList, tailCount, tailAverageWidth, fontMetrics);
+    if (tailMap.isEmpty())
+        return startX;
+
+    int currentX = startX;
+    for (auto tailIndex : tailMap.keys()) {
+        if (tailIndex != 0)
+            currentX += ItemDataSpacing;
+        drawSecondLineText(painter, tailMap.value(tailIndex), font, fontMetrics, color, currentX, startY);
+    }
+
+    return currentX;
+}
+
+void GrandSearchListDelegate::drawSecondLineText(QPainter *painter, const QString &text, const QFont &font,
+                                                     const QFontMetrics &fontMetrics, const QColor &color,
+                                                     int &startX, int startY) const
+{
+    int showWidth = fontMetrics.size(Qt::TextSingleLine, text).width();
+
+    QTextLayout layout;
+    layout.setText(text);
+    layout.setFont(font);
     QTextCharFormat fmt;
     fmt.setForeground(color);
-    fmt.setFont(font);
-    cursor.mergeCharFormat(fmt);
-    cursor.clearSelection();
-    cursor.movePosition(QTextCursor::EndOfLine);
-    cursor.endEditBlock();
+    layout.setFormats({QTextLayout::FormatRange{0, static_cast<int>(text.length()), fmt}});
 
-    int margin = static_cast<int>((option.rect.height() - fontMetrics.height()) / 2);
-    int showWidth = fontMetrics.size(Qt::TextSingleLine, text).width();
-    QRect rect(startX, option.rect.y() + margin, showWidth, option.rect.height());
+    layout.beginLayout();
+    layout.createLine();
+    layout.endLayout();
 
-    QAbstractTextDocumentLayout::PaintContext paintContext;
     painter->save();
-    painter->translate(rect.topLeft());
-    painter->setClipRect(rect.translated(-rect.topLeft()));
-    document.documentLayout()->draw(painter, paintContext);
+    painter->translate(startX, startY);
+    layout.draw(painter, QPointF(0, 0));
     painter->restore();
-    // 更新绘制开始位置
+
     startX += showWidth;
 }
 
@@ -356,7 +444,7 @@ void GrandSearchListDelegate::calcTailShowInfo(const int totalTailWidth, int &ta
 
     while (1 != tailCount) {
         // 计算每个拖尾信息平均可显示宽度(每个拖尾信息之间显示间隔10个像素)
-        averageWidth = (totalTailWidth - (tailCount - 1) * TailDataMargin) / tailCount;
+        averageWidth = (totalTailWidth - (tailCount - 1) * ItemDataSpacing) / tailCount;
         if (averageWidth > 0)
             break;
         // 宽度不够显示 (tailCount - 1) * TailDataMargin 个间隔，则减少拖尾数量继续计算

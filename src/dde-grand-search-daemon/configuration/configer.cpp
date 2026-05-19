@@ -63,8 +63,7 @@ UserPreferencePointer ConfigerPrivate::fileSearcher()
 UserPreferencePointer ConfigerPrivate::tailerData()
 {
     QVariantHash data = {
-        { GRANDSEARCH_TAILER_PARENTDIR, false },
-        { GRANDSEARCH_TAILER_TIMEMODEFIED, true }
+        { GRANDSEARCH_TAILER_PARENTDIR, false }
     };
 
     return UserPreferencePointer(new UserPreference(data));
@@ -203,11 +202,7 @@ bool ConfigerPrivate::updateConfig1(QSettings *set)
     if (UserPreferencePointer conf = m_root->group(GRANDSEARCH_TAILER_GROUP)) {
         bool ret = set->value(GRANDSEARCH_TAILER_PARENTDIR, false).toBool();
         conf->setValue(GRANDSEARCH_TAILER_PARENTDIR, ret);
-
-        ret = set->value(GRANDSEARCH_TAILER_TIMEMODEFIED, true).toBool();
-        conf->setValue(GRANDSEARCH_TAILER_TIMEMODEFIED, ret);
-        qCDebug(logDaemon) << "Tailer configuration updated - Parent dir:" << conf->value<bool>(GRANDSEARCH_TAILER_PARENTDIR, false)
-                           << "Time modified:" << conf->value<bool>(GRANDSEARCH_TAILER_TIMEMODEFIED, true);
+        qCDebug(logDaemon) << "Tailer configuration updated - Parent dir:" << conf->value<bool>(GRANDSEARCH_TAILER_PARENTDIR, false);
     } else {
         qCWarning(logDaemon) << "Configuration not found:" << GRANDSEARCH_TAILER_GROUP;
     }

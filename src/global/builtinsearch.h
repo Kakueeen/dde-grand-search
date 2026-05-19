@@ -55,6 +55,9 @@
 // 拖尾数据
 #define GRANDSEARCH_PROPERTY_ITEM_TAILER    "itemTailer"
 
+// 修改时间（独立于拖尾，不限制绘制宽度）
+#define GRANDSEARCH_PROPERTY_ITEM_MODIFIED_TIME    "itemModifiedTime"
+
 // 匹配的到具体信息
 #define GRANDSEARCH_PROPERTY_ITEM_MATCHEDCONTEXT    "itemMatchedContext"
 
