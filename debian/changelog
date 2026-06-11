@@ -1,3 +1,12 @@
+dde-grand-search (6.0.38) unstable; urgency=medium
+
+  * fix: update French translations for grand search UI
+  * refactor: replace QFontMetrics with QFontMetricsF and consolidate text elision
+  * fix: optimize search text change handling to avoid redundant operations
+  * fix(test): resolve UT crash and assertion failures in test suite
+
+ -- Liu Zhangjian <liuzhangjian@uniontech.com>  Thu, 11 Jun 2026 18:36:54 +0800
+
 dde-grand-search (6.0.37) unstable; urgency=medium
 
   * refactor: move highlight content extraction from daemon to client-side
