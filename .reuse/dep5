@@ -1,0 +1,120 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: dde-grand-search
+Upstream-Contact: UnionTech Software Technology Co., Ltd. <>
+Source: https://github.com/linuxdeepin/dde-grand-search
+
+# ci
+Files: .github/* .obs/workflows.yml
+Copyright: None
+License: CC0-1.0
+
+# gitignore
+Files: .gitignore 
+Copyright: None
+License: CC0-1.0
+
+# debian
+Files: debian/*
+Copyright: None
+License: CC0-1.0
+
+# rpm
+Files: rpm/*
+Copyright: None
+License: CC0-1.0
+
+# Project file
+Files: CMakeLists.txt .tx/*
+Copyright: None
+License: CC0-1.0
+
+# README
+Files: README.md README.zh_CN.md CHANGELOG.md
+Copyright: UnionTech Software Technology Co., Ltd.
+License: CC-BY-4.0
+
+# assets
+Files: assets/*
+Copyright: UnionTech Software Technology Co., Ltd.
+License: GPL-3.0-or-later
+
+# translations
+Files: translate_generation.sh lupdate.sh translations/*
+Copyright: UnionTech Software Technology Co., Ltd.
+License: GPL-3.0-or-later
+
+# src
+Files: src/*
+Copyright: UnionTech Software Technology Co., Ltd.
+License: GPL-3.0-or-later
+
+# tests
+Files: tests/*
+Copyright: UnionTech Software Technology Co., Ltd.
+License: GPL-3.0-or-later
+
+# cpp-stub
+Files: tests/3rdparty/cpp-stub/*
+Copyright: 2019 coolxv
+License: MIT
+
+# stub-ext
+Files: tests/3rdparty/stub-ext/*
+Copyright: 2020 Zhang Yu
+License: MIT
+
+# FindGMock
+Files: tests/cmake/modules/FindGMock.cmake
+Copyright: 2011 Matej Svec
+License: MIT
+
+# interfaces
+Files: 3rdparty/interfaces/*
+Copyright: 2017 The Qt Company Ltd.
+License: CC0-1.0
+
+# services
+Files: 3rdparty/services/*
+Copyright: 2017 The Qt Company Ltd.
+License: CC0-1.0
+
+#lucene
+Files: 3rdparty/lucene/*
+Copyright: 2009-2014 Alan Wright
+License: LGPL-3.0-or-later
+
+# docs
+Files: docs/*
+Copyright: UnionTech Software Technology Co., Ltd.
+License: CC-BY-4.0
+
+# examples - source code (already have SPDX headers, dep5 as fallback)
+Files: examples/calculator-search-plugin/*.cpp examples/calculator-search-plugin/*.h
+Copyright: 2026 UnionTech Software Technology Co., Ltd.
+License: GPL-3.0-or-later
+
+# examples - build files & config
+Files: examples/calculator-search-plugin/CMakeLists.txt examples/calculator-search-plugin/calculator-search.conf.in
+Copyright: 2026 UnionTech Software Technology Co., Ltd.
+License: CC0-1.0
+
+# examples - README
+Files: examples/calculator-search-plugin/README.md
+Copyright: 2026 UnionTech Software Technology Co., Ltd.
+License: CC-BY-4.0
+
+# examples - debian packaging
+Files: examples/calculator-search-plugin/debian/*
+Copyright: 2026 UnionTech Software Technology Co., Ltd.
+License: CC0-1.0
+
+# exprtk (header-only math expression library)
+Files: examples/calculator-search-plugin/3rdparty/exprtk/*
+Copyright: 1999-2024 Arash Partow
+License: MIT
+
+# toolGenerate
+Files: toolGenerate/**/*
+Copyright: None
+License: CC0-1.0
+

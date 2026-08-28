@@ -1,0 +1,74 @@
+// SPDX-FileCopyrightText: 2021 - 2026 UnionTech Software Technology Co., Ltd.
+//
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+#ifndef BUILTINSEARCH_H
+#define BUILTINSEARCH_H
+
+// 定义内置搜索项的名称
+#define GRANDSEARCH_CLASS_FILE_DEEPIN "com.deepin.dde-grand-search.file-deepin"
+#define GRANDSEARCH_CLASS_APP_DESKTOP "com.deepin.dde-grand-search.app-desktop"
+#define GRANDSEARCH_CLASS_SETTING_CONTROLCENTER "com.deepin.dde-grand-search.dde-control-center-setting"
+#define GRANDSEARCH_CLASS_WEB_STATICTEXT "com.deepin.dde-grand-search.web-statictext"
+#define GRANDSEARCH_CLASS_FILE_SEMANTIC "com.deepin.dde-grand-search.semantic"
+#define GRANDSEARCH_CLASS_OCR_TEXT "com.deepin.dde-grand-search.ocr-text"
+#define GRANDSEARCH_CLASS_FILE_FULLTEXT "com.deepin.dde-grand-search.file-fulltext"
+
+// 搜索项所属组
+#define GRANDSEARCH_GROUP_BEST               "com.deepin.dde-grand-search.group.best-match"
+#define GRANDSEARCH_GROUP_APP                "com.deepin.dde-grand-search.group.application"
+#define GRANDSEARCH_GROUP_SETTING            "com.deepin.dde-grand-search.group.dde-control-center-setting"
+#define GRANDSEARCH_GROUP_WEB                "com.deepin.dde-grand-search.group.web"
+
+#define GRANDSEARCH_GROUP_FOLDER             "com.deepin.dde-grand-search.group.folder"
+
+#define GRANDSEARCH_GROUP_FILE               "com.deepin.dde-grand-search.group.files"
+#define GRANDSEARCH_GROUP_FILE_VIDEO         "com.deepin.dde-grand-search.group.files.video"
+#define GRANDSEARCH_GROUP_FILE_AUDIO         "com.deepin.dde-grand-search.group.files.audio"
+#define GRANDSEARCH_GROUP_FILE_PICTURE       "com.deepin.dde-grand-search.group.files.picture"
+#define GRANDSEARCH_GROUP_FILE_DOCUMNET      "com.deepin.dde-grand-search.group.files.document"
+
+#define GRANDSEARCH_GROUP_FILE_OCR           "com.deepin.dde-grand-search.group.files.ocr"
+#define GRANDSEARCH_GROUP_FILE_SEMANTIC      "com.deepin.dde-grand-search.group.files.semantic"
+
+/****************** 扩展数据 *********************************/
+// 搜索项在组内的显示等级
+#define GRANDSEARCH_PROPERTY_ITEM_LEVEL      "itemLevel"
+#define GRANDSEARCH_PROPERTY_ITEM_LEVEL_FIRST   1
+#define GRANDSEARCH_PROPERTY_ITEM_LEVEL_SECOND  2
+#define GRANDSEARCH_PROPERTY_ITEM_LEVEL_THIRD   3
+
+// 权重计算方法
+#define GRANDSEARCH_PROPERTY_WEIGHT_METHOD            "weightMethod"
+#define GRANDSEARCH_PROPERTY_WEIGHT_METHOD_LOCALFILE  "localFileMethod"
+#define GRANDSEARCH_PROPERTY_WEIGHT_METHOD_APP        "desktopAppMethod"
+#define GRANDSEARCH_PROPERTY_WEIGHT_METHOD_SETTING    "settingMethod"
+
+// 权重属性
+#define GRANDSEARCH_PROPERTY_ITEM_WEIGHT    "itemWeight"
+
+// 拖尾数据
+#define GRANDSEARCH_PROPERTY_ITEM_TAILER    "itemTailer"
+
+// 修改时间（独立于拖尾，不限制绘制宽度）
+#define GRANDSEARCH_PROPERTY_ITEM_MODIFIED_TIME    "itemModifiedTime"
+
+// 匹配的到具体信息
+#define GRANDSEARCH_PROPERTY_ITEM_MATCHEDCONTEXT    "itemMatchedContext"
+
+// 匹配的关键词列表
+#define GRANDSEARCH_PROPERTY_ITEM_KEYWORDS          "itemKeywords"
+
+/****************** 扩展数据 END ******************************/
+
+#define DEF_BUILTISEARCH_NAMES  \
+static const QStringList predefBuiltinSearches { \
+GRANDSEARCH_CLASS_FILE_DEEPIN, \
+GRANDSEARCH_CLASS_APP_DESKTOP, \
+GRANDSEARCH_CLASS_WEB_STATICTEXT, \
+GRANDSEARCH_CLASS_FILE_SEMANTIC, \
+GRANDSEARCH_CLASS_FILE_FULLTEXT, \
+GRANDSEARCH_CLASS_OCR_TEXT \
+}
+
+#endif // BUILTINSEARCH_H
