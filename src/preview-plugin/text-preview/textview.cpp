@@ -6,6 +6,8 @@
 #include "textview.h"
 #include "global/commontools.h"
 
+#include <DTextEncoding>
+
 #include <QHBoxLayout>
 #include <QStackedWidget>
 #include <QScrollBar>
@@ -22,16 +24,24 @@ Q_DECLARE_LOGGING_CATEGORY(logTextPreview)
 GRANDSEARCH_USE_NAMESPACE
 using namespace GrandSearch::text_preview;
 
+// 最多读取的文本大小，避免大文件阻塞主线程
+static constexpr qint64 kMaxReadSize { 1024 * 1024 };
+
 void PlainTextEdit::mouseMoveEvent(QMouseEvent *e)
 {
-    //解决鼠标按住向下滑动，当超出本控件区域后会触发scrollbar滚动
-    //屏蔽该事件，不再激活autoScrollTimer
-    if (e->source() == Qt::MouseEventNotSynthesized) {
-        e->accept();
-        return;
-    }
-
+    // 支持鼠标拖动框选文本，交回基类处理
     QPlainTextEdit::mouseMoveEvent(e);
+}
+
+// Qt5 无 QByteArray::isValidUtf8，统一用 QTextCodec 校验 UTF-8 合法性
+static bool isValidUtf8(const QByteArray &data)
+{
+    if (QTextCodec *codec = QTextCodec::codecForName("UTF-8")) {
+        QTextCodec::ConverterState state;
+        codec->toUnicode(data.constData(), data.size(), &state);
+        return state.invalidChars < 1;
+    }
+    return false;
 }
 
 QString TextView::toUnicode(const QByteArray &data)
@@ -40,18 +50,35 @@ QString TextView::toUnicode(const QByteArray &data)
     if (data.isEmpty())
         return text;
 
-    //优先判断
-    static const QByteArrayList maybe = {"UTF-8", "GBK"};
-    for (const QByteArray &code : maybe) {
-        if (QTextCodec *codec = QTextCodec::codecForName(code)) {
-            QTextCodec::ConverterState state;
-            text = codec->toUnicode(data.constData(), data.size(), &state);
-            if (state.invalidChars < 1)
-                return text;
+    // 参考文管 text-preview 的转码策略：
+    // Step 1: 已是合法 UTF-8，直接使用（覆盖 ASCII 与真正的 UTF-8 文件）
+    if (isValidUtf8(data)) {
+        qCDebug(logTextPreview) << "Raw data is valid UTF-8, using directly";
+        return QString::fromUtf8(data);
+    }
+
+    QByteArray rawData = data;
+    QByteArray out;
+
+    // Step 2: 尝试 GB18030 → UTF-8（GB18030 是 GBK 超集，覆盖绝大多数非 UTF-8 中文文本）
+    if (Dtk::Core::DTextEncoding::convertTextEncoding(rawData, out, "utf-8", "gb18030")) {
+        qCDebug(logTextPreview) << "GB18030 → UTF-8 conversion successful";
+        return QString::fromUtf8(out);
+    }
+
+    // Step 3: 自动检测编码兜底（Big5、EUC-JP 等少见编码）
+    QByteArray detected = Dtk::Core::DTextEncoding::detectTextEncoding(data);
+    qCDebug(logTextPreview) << "Detected file encoding:" << detected;
+    if (!detected.isEmpty() && detected.toLower() != "utf-8") {
+        rawData = data;
+        if (Dtk::Core::DTextEncoding::convertTextEncoding(rawData, out, "utf-8")) {
+            qCDebug(logTextPreview) << "Encoding conversion successful from" << detected;
+            return QString::fromUtf8(out);
         }
     }
 
-    return QString::fromLocal8Bit(data);
+    // 检测为 UTF-8 或转换失败时，按 UTF-8 解码，损坏字节显示为替换符而非整体乱码
+    return QString::fromUtf8(data);
 }
 
 void TextView::showErrorPage()
@@ -122,18 +149,18 @@ void TextView::initUI()
     m_browser->viewport()->setAutoFillBackground(false);
     m_browser->setFrameShape(QFrame::NoFrame);
 
-    //无滚动
-    m_browser->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-    m_browser->verticalScrollBar()->setDisabled(true);
+    //内容超出一屏时可纵向滚动，横向始终禁止（自动换行）
+    m_browser->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
     m_browser->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     m_browser->horizontalScrollBar()->setDisabled(true);
 
-    //无交互，自动换行
+    //只读，允许框选与复制，但不显示光标
     m_browser->setReadOnly(true);
-    m_browser->setTextInteractionFlags(Qt::NoTextInteraction);
+    m_browser->setTextInteractionFlags(Qt::TextSelectableByMouse | Qt::TextSelectableByKeyboard);
+    m_browser->setCursorWidth(0);
     m_browser->setLineWrapMode(QPlainTextEdit::WidgetWidth);
     m_browser->setWordWrapMode(QTextOption::WrapAtWordBoundaryOrAnywhere);
-    m_browser->setFocusPolicy(Qt::NoFocus);
+    m_browser->setFocusPolicy(Qt::ClickFocus);
 
     //样式
     //文本内容上边距是10,左右边距是20,通过DocumentMargin设置10的边距
@@ -160,7 +187,8 @@ void TextView::setSource(const QString &path)
 
     QFile file(path);
     if (file.open(QFile::ReadOnly)) {
-        auto datas = file.read(2048);
+        // 读取更多内容以便完整预览，上限 1MB 避免大文件阻塞
+        auto datas = file.read(kMaxReadSize);
         qCDebug(logTextPreview) << "Text file loaded successfully - Size:" << datas.size() << "bytes";
         m_browser->setPlainText(toUnicode(datas));
     } else {
